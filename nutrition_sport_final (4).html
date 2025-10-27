@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nutrition & Sport - Suivi Complet Final</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #53354a, #903749);
+      color: #f0f0f0; min-height: 100vh; }
+    header { background: rgba(0,0,0,0.6); text-align: center; padding: 1rem; }
+    nav { display: flex; justify-content: space-around; background: #111; }
+    nav button { flex: 1; padding: 1rem; border: none; background: #111; color: #f0f0f0; cursor: pointer; }
+    nav button.active { background: #e94560; }
+    .container { padding: 1rem; max-width: 1200px; margin: auto; }
+    .tab { display: none; } .tab.active { display: block; }
+    .card { background: rgba(255,255,255,0.05); padding: 1rem; margin: 1rem 0; border-radius: 12px; }
+    h2, h3 { color: #e94560; }
+    select, button, input { padding: 10px; margin-top: 5px; width: 100%; border-radius: 6px; border: 1px solid #444; background: #111; color: #f0f0f0; }
+    button { background: linear-gradient(90deg, #903749, #e94560); cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table, th, td { border: 1px solid #444; }
+    th, td { padding: 8px; text-align: center; }
+    ul { list-style: none; padding-left: 0; }
+    canvas { display: block; margin: auto; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Nutrition & Sport</h1>
+</header>
+
+<nav>
+  <button class="tab-btn active" onclick="openTab(event,'nutrition')">🍽️ Nutrition</button>
+  <button class="tab-btn" onclick="openTab(event,'sport')">🏋️ Sport</button>
+  <button class="tab-btn" onclick="openTab(event,'resume')">📊 Résumé</button>
+</nav>
+
+<div class="container">
+
+  <!-- Onglet Nutrition -->
+  <section id="nutrition" class="tab active">
+    <h2>🍽️ Nutrition</h2>
+    <div class="card">
+      <h3>🔄 Objectif calorique</h3>
+      <input type="number" id="calorieGoalInput" placeholder="Changer objectif (ex: 2800)">
+      <button onclick="changeGoal()">Mettre à jour objectif</button>
+      <canvas id="calorieChart" width="200" height="200"></canvas>
+      <p style="text-align:center;">Objectif : <span id="calorieGoal">2600</span> kcal | Restant : <span id="calorieRemaining">2600</span> kcal</p>
+    </div>
+
+    <div class="card">
+      <h3>📂 Bibliothèque d'aliments (Excel)</h3>
+      <input type="file" id="excelFile" accept=".xlsx, .xls">
+      <button onclick="importExcel()">Importer</button>
+    </div>
+
+    <div class="card">
+      <h3>🥐 Petit-déjeuner</h3>
+      <button onclick="addDefaultBreakfast()">Petit-déjeuner par défaut</button><br>
+      <select id="breakfastSelect"></select>
+      <button onclick="addFromLibrary('breakfast')">Ajouter depuis liste</button><br>
+      <input type="text" id="breakfastName" placeholder="Nom aliment">
+      <input type="number" id="breakfastCalories" placeholder="Calories">
+      <button onclick="addMeal('breakfast')">Ajouter manuel</button>
+      <ul id="breakfast-list"></ul>
+    </div>
+
+    <div class="card">
+      <h3>🍲 Déjeuner</h3>
+      <select id="lunchSelect"></select>
+      <button onclick="addFromLibrary('lunch')">Ajouter depuis liste</button><br>
+      <input type="text" id="lunchName" placeholder="Nom aliment">
+      <input type="number" id="lunchCalories" placeholder="Calories">
+      <button onclick="addMeal('lunch')">Ajouter manuel</button>
+      <ul id="lunch-list"></ul>
+    </div>
+
+    <div class="card">
+      <h3>🌙 Dîner</h3>
+      <select id="dinnerSelect"></select>
+      <button onclick="addFromLibrary('dinner')">Ajouter depuis liste</button><br>
+      <input type="text" id="dinnerName" placeholder="Nom aliment">
+      <input type="number" id="dinnerCalories" placeholder="Calories">
+      <button onclick="addMeal('dinner')">Ajouter manuel</button>
+      <ul id="dinner-list"></ul>
+    </div>
+  </section>
+
+  <!-- Onglet Sport -->
+  <section id="sport" class="tab">
+    <h2>🏋️ Sport</h2>
+    <div class="card">
+      <h3>➕ Ajouter une séance</h3>
+      <select id="sportType">
+        <option value="HT">HT (Home Trainer)</option>
+        <option value="Muscu">Musculation</option>
+        <option value="Salle">Salle</option>
+        <option value="Course">Course</option>
+        <option value="Vélo">Vélo</option>
+      </select>
+      <input type="date" id="sportDate">
+      <input type="number" id="sportDuration" placeholder="Durée (min)">
+      <input type="number" id="sportDistance" placeholder="Distance/Charge (km ou kg)">
+      <button onclick="addSession()">Ajouter Séance</button>
+    </div>
+
+    <div class="card">
+      <h3>📋 Historique des séances</h3>
+      <table id="sessionTable">
+        <thead><tr><th>Date</th><th>Type</th><th>Durée (min)</th><th>Distance/Charge</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>📈 Statistiques hebdo</h3>
+      <canvas id="sportChart" height="100"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>📊 Volume d'entraînement</h3>
+      <canvas id="volumeChart" height="100"></canvas>
+    </div>
+  </section>
+
+  <!-- Onglet Résumé -->
+  <section id="resume" class="tab">
+    <h2>📊 Résumé</h2>
+    <div class="card">
+      <h3>📈 Courbe de poids</h3>
+      <canvas id="weightChart"></canvas>
+      <input type="date" id="weightDate">
+      <input type="number" id="weightInput" placeholder="Entrer poids (kg)">
+      <button onclick="addWeight()">Ajouter Poids</button>
+    </div>
+    <div class="card">
+      <h3>🏋️ Suivi des séances</h3>
+      <table id="resumeTable">
+        <thead><tr><th>Date</th><th>Type</th><th>Durée</th><th>Distance/Charge</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>🎯 Objectif</h3>
+      <p><strong>Mars 2026 :</strong> Rouleur costaud 🚴💪</p>
+      <button onclick="exportPDF()">📄 Exporter en PDF</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// === GESTION DES ONGLETS ===
+function openTab(evt, tabName) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(tabName).classList.add('active');
+  evt.currentTarget.classList.add('active');
+}
+
+// === NUTRITION ===
+let calorieGoal = 2600, calorieRemaining = 2600, calorieChart, foodLibrary = [];
+function initCalorieChart(){
+  calorieChart=new Chart(document.getElementById("calorieChart").getContext("2d"),{
+    type:"doughnut",
+    data:{labels:["Restant","Consommé"],datasets:[{data:[calorieRemaining,calorieGoal-calorieRemaining],backgroundColor:["#e94560","#444"]}]},
+    options:{responsive:false,cutout:"70%"}});
+}
+function updateCalorieChart(){
+  document.getElementById("calorieGoal").innerText=calorieGoal;
+  document.getElementById("calorieRemaining").innerText=calorieRemaining;
+  calorieChart.data.datasets[0].data=[calorieRemaining,calorieGoal-calorieRemaining];
+  calorieChart.update();
+  saveDayData();
+}
+function changeGoal(){let v=document.getElementById("calorieGoalInput").value;if(v>0){calorieGoal=parseInt(v);calorieRemaining=calorieGoal;updateCalorieChart();}}
+function addMeal(type){let n=document.getElementById(type+"Name"),c=document.getElementById(type+"Calories");if(n.value&&c.value){let li=document.createElement("li");li.textContent=n.value+" - "+c.value+" kcal";document.getElementById(type+"-list").appendChild(li);calorieRemaining-=parseInt(c.value);updateCalorieChart();n.value="";c.value="";}}
+function addFromLibrary(type){let s=document.getElementById(type+"Select");if(s.selectedIndex>0){let f=foodLibrary[s.selectedIndex-1];let li=document.createElement("li");li.textContent=f.name+" - "+f.cal+" kcal";document.getElementById(type+"-list").appendChild(li);calorieRemaining-=f.cal;updateCalorieChart();}}
+function addDefaultBreakfast(){[{name:"Fromage blanc",cal:130},{name:"Fruit",cal:130},{name:"Pain céréales",cal:80},{name:"Beurre",cal:20},{name:"Confiture",cal:20},{name:"Thé",cal:0}].forEach(i=>{let li=document.createElement("li");li.textContent=i.name+" - "+i.cal+" kcal";document.getElementById("breakfast-list").appendChild(li);calorieRemaining-=i.cal;});updateCalorieChart();}
+function importExcel(){const f=document.getElementById("excelFile").files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});const j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});foodLibrary=[];j.forEach((row,i)=>{if(i>0&&row.length>=2)foodLibrary.push({name:row[0],cal:parseInt(row[1])});});["breakfastSelect","lunchSelect","dinnerSelect"].forEach(id=>{let s=document.getElementById(id);s.innerHTML="<option value=''>-- Choisir --</option>";foodLibrary.forEach(it=>{let o=document.createElement("option");o.textContent=it.name+" ("+it.cal+" kcal)";s.appendChild(o);});});};r.readAsArrayBuffer(f);}
+function saveDayData(){let t=new Date().toISOString().split("T")[0];localStorage.setItem("calories_"+t,JSON.stringify({goal:calorieGoal,remaining:calorieRemaining}));}
+function loadDayData(){let t=new Date().toISOString().split("T")[0];let d=localStorage.getItem("calories_"+t);if(d){d=JSON.parse(d);calorieGoal=d.goal;calorieRemaining=d.remaining;}else{calorieGoal=2600;calorieRemaining=2600;}updateCalorieChart();}
+
+// === SPORT ===
+let sessions=[],sportChart,volumeChart;
+function addSession(){let t=document.getElementById("sportType").value,d=document.getElementById("sportDate").value,du=parseInt(document.getElementById("sportDuration").value)||0,di=parseInt(document.getElementById("sportDistance").value)||0;if(d&&t){sessions.push({date:d,type:t,duration:du,distance:di});localStorage.setItem("sessions",JSON.stringify(sessions));updateSessionTable();updateSportCharts();}} 
+function updateSessionTable(){let tb=document.querySelector("#sessionTable tbody");tb.innerHTML="";sessions.forEach(s=>{let r=tb.insertRow();r.insertCell(0).innerText=s.date;r.insertCell(1).innerText=s.type;r.insertCell(2).innerText=s.duration||"-";r.insertCell(3).innerText=s.distance||"-";});let rb=document.querySelector("#resumeTable tbody");rb.innerHTML="";sessions.forEach(s=>{let r=rb.insertRow();r.insertCell(0).innerText=s.date;r.insertCell(1).innerText=s.type;r.insertCell(2).innerText=s.duration||"-";r.insertCell(3).innerText=s.distance||"-";});}
+function initSportCharts(){sportChart=new Chart(document.getElementById("sportChart"),{type:"bar",data:{labels:[],datasets:[{label:"Séances/sem",data:[],backgroundColor:"#e94560"}]},options:{responsive:true,scales:{y:{beginAtZero:true}}}});volumeChart=new Chart(document.getElementById("volumeChart"),{type:"line",data:{labels:[],datasets:[{label:"Durée (min)",data:[],borderColor:"#e94560",fill:false},{label:"Distance/Charge",data:[],borderColor:"#00c896",fill:false}]},options:{responsive:true}});}
+function updateSportCharts(){let c={},du={},di={};sessions.forEach(s=>{let w=getWeekNumber(new Date(s.date));c[w]=(c[w]||0)+1;du[w]=(du[w]||0)+s.duration;di[w]=(di[w]||0)+s.distance;});let weeks=Object.keys(c);sportChart.data.labels=weeks;sportChart.data.datasets[0].data=weeks.map(w=>c[w]);sportChart.update();volumeChart.data.labels=weeks;volumeChart.data.datasets[0].data=weeks.map(w=>du[w]||0);volumeChart.data.datasets[1].data=weeks.map(w=>di[w]||0);volumeChart.update();}
+function getWeekNumber(d){d=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));let y=new Date(Date.UTC(d.getUTCFullYear(),0,1));return d.getUTCFullYear()+"-W"+Math.ceil((((d-y)/86400000)+1)/7);}
+function loadSessions(){sessions=JSON.parse(localStorage.getItem("sessions")||"[]");updateSessionTable();updateSportCharts();}
+
+// === RESUME ===
+let weightData=[],weightLabels=[],weightChart;
+function initWeightChart(){weightChart=new Chart(document.getElementById("weightChart"),{type:"line",data:{labels:weightLabels,datasets:[{label:"Poids (kg)",data:weightData,borderColor:"#e94560",fill:false}]},options:{responsive:true}});}
+function addWeight(){let d=document.getElementById("weightDate").value,v=document.getElementById("weightInput").value;if(d&&v){weightLabels.push(d);weightData.push(v);localStorage.setItem("weightLabels",JSON.stringify(weightLabels));localStorage.setItem("weightData",JSON.stringify(weightData));weightChart.update();}}
+function loadWeight(){weightLabels=JSON.parse(localStorage.getItem("weightLabels")||"[]");weightData=JSON.parse(localStorage.getItem("weightData")||"[]");weightChart.data.labels=weightLabels;weightChart.data.datasets[0].data=weightData;weightChart.update();}
+function exportPDF(){const{jsPDF}=window.jspdf;let doc=new jsPDF();doc.text("Résumé Nutrition & Sport",10,10);doc.text("Objectif Mars 2026 : Rouleur costaud",10,20);doc.text("Poids :",10,30);let y=40;weightLabels.forEach((l,i)=>{doc.text(l+" : "+weightData[i]+" kg",10,y);y+=10;});doc.text("Séances :",10,y+10);sessions.forEach((s,i)=>{doc.text(s.date+" - "+s.type+" ("+s.duration+"min, "+s.distance+")",10,y+20+i*10);});doc.save("resume.pdf");}
+
+// === INIT ===
+window.onload=function(){initCalorieChart();loadDayData();initSportCharts();loadSessions();initWeightChart();loadWeight();};
+</script>
+
+</body>
+</html>
